@@ -411,6 +411,7 @@ abstract class BiboxFuturesUSDTClientBase {
         json.put("order_side", ApiOrderSide.lookupOrderSide(order).getValue());
         json.put("order_type", 1);
         json.put("order_from", 6);
+        json.put("price", 1);
         if (!StringUtils.isEmpty(order.getClientOrderId())) {
             json.put("client_oid", order.getClientOrderId());
         }
