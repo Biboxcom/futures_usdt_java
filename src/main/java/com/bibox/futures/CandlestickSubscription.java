@@ -57,7 +57,7 @@ class CandlestickSubscription extends Subscription<List<Candlestick>> {
 
     @Override
     public List<Candlestick> decode(JSONObject json) {
-        return JSONUtils.parseCandlesticks(json.getJSONArray("data"));
+        return JSONUtils.parseCandlesticks(json.getJSONArray("data"),1);
     }
 
     @Override

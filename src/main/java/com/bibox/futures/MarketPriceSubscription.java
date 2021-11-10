@@ -52,7 +52,7 @@ class MarketPriceSubscription extends Subscription<List<MarkPrice>> {
 
     @Override
     public List<MarkPrice> decode(JSONObject json) {
-        return JSONUtils.parseMarketPrice(json.getJSONArray("data"));
+        return JSONUtils.parseMarketPrice(json.getJSONArray("data"),1);
     }
 
     @Override

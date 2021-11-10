@@ -109,6 +109,14 @@ class JSONUtils {
         return list;
     }
 
+    public static List<Candlestick> parseCandlesticks(JSONArray arr,int index ) {
+        List<Candlestick> list = new ArrayList<>();
+        if (!arr.isEmpty() && arr.size() > index) {
+            list.add(Candlestick.parseResult(arr.getJSONObject(index)));
+        }
+        return list;
+    }
+
     public static OrderBook parseOrderBook(String text) throws Throwable {
         JSONObject obj = parseObject(text, "result");
         return OrderBook.parseResult(obj);
@@ -284,6 +292,14 @@ class JSONUtils {
         List<MarkPrice> list = new ArrayList<>();
         for (int i = 0; i < arr.size(); i++) {
             list.add(MarkPrice.parseResult(arr.getJSONObject(i)));
+        }
+        return list;
+    }
+
+    public static List<MarkPrice> parseMarketPrice(JSONArray arr,Integer index) {
+        List<MarkPrice> list = new ArrayList<>();
+        if (!arr.isEmpty() && arr.size() > index) {
+            list.add(MarkPrice.parseResult(arr.getJSONObject(index)));
         }
         return list;
     }
