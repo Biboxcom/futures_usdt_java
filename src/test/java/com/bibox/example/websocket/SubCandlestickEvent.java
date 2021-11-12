@@ -12,7 +12,7 @@ public class SubCandlestickEvent {
             x.forEach(System.out::println);
             // ...
         });
-        // client.unSubscribeCandlestickEvent(symbol,CandlestickInterval.ONE_MINUTE);
+        // client.unsubscribeCandlestick(symbol,TimeInterval.ONE_MINUTE);
     }
 
 }

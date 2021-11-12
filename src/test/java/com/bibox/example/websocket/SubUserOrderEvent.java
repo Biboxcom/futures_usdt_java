@@ -5,8 +5,8 @@ import com.bibox.futures.BiboxFuturesUSDTClient;
 public class SubUserOrderEvent {
 
     public static void main(String[] args) {
-        String apiKey = "834542863b26007e21025sadasd112312155d0b6";
-        String secretKey = "1f7e7b9a7b45c45cca768c9198d97e0252fd64ab";
+        String apiKey = "your apiKey";
+        String secretKey = "your secretKey";
         BiboxFuturesUSDTClient client = new BiboxFuturesUSDTClient(apiKey, secretKey);
         client.subscribeOrder(x -> {
             x.forEach(System.out::println);

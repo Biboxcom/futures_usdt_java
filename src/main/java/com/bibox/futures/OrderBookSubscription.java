@@ -26,7 +26,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.bibox.futures.model.OrderBook;
 import com.bibox.util.Listener;
-import com.bibox.util.ZipUtils;
 
 class OrderBookSubscription extends Subscription<OrderBook> {
 
@@ -40,7 +39,7 @@ class OrderBookSubscription extends Subscription<OrderBook> {
     }
 
     static String buildChannelName(String symbol) {
-        return String.format("bibox_sub_spot_%s_depth",
+        return String.format("%s_depth",
                 SymbolConverter.convert(symbol));
     }
 
@@ -51,11 +50,11 @@ class OrderBookSubscription extends Subscription<OrderBook> {
 
     @Override
     public OrderBook decode(JSONObject json) {
-        String data = ZipUtils.unzip(json.getBytes("data"));
+        String data = json.getString("d");
         JSONObject obj = JSON.parseObject(data);
 
         if (!obj.containsKey("add")) {
-            orderBook = OrderBook.parseResult(obj);
+            orderBook = OrderBook.parseEventResult(obj);
             return orderBook;
         }
         OrderBook.updateFromEvent(orderBook, obj);
@@ -75,10 +74,7 @@ class OrderBookSubscription extends Subscription<OrderBook> {
     @Override
     public String toString() {
         JSONObject json = new JSONObject();
-        json.put("event", "addChannel");
-        json.put("channel", getChannel());
-        json.put("binary", 0);
-        json.put("ver", 3);
+        json.put("sub", getChannel());
         return json.toJSONString();
     }
 

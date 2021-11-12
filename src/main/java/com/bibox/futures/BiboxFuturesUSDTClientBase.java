@@ -23,7 +23,6 @@
 package com.bibox.futures;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.bibox.futures.model.*;
 import com.bibox.futures.model.enums.TransferDirection;
@@ -33,6 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +42,7 @@ import java.util.concurrent.Executors;
 abstract class BiboxFuturesUSDTClientBase {
 
     public String restHost = "https://api.bibox.com";
-    public String urlWss = "wss://push.bibox.me/cbu";
+    public String urlWss = "wss://npush.bibox360.com/cbu";
 
     public void setRestHost(String restHost) {
         this.restHost = restHost;
@@ -141,19 +141,27 @@ abstract class BiboxFuturesUSDTClientBase {
     }
 
     public void unsubscribe(String channel) {
-        messageHandler.post(() -> {
-            Subscription sub = subscriptions.remove(channel);
-            if (sub != null) {
-                sub.stop();
-            }
-        });
+        if (messageHandler!=null) {
+            messageHandler.post(() -> {
+                Subscription sub = subscriptions.remove(channel);
+                if (sub != null) {
+                    sub.stop();
+                }
+            });
+        }
     }
 
     public void unsubscribeAllPrivateSubscriptions() {
         messageHandler.post(() -> {
-            sendUnsubscribeMessage(PrivateSubscription.CHANNEL_PREFIX);
+            sendUnsubscribeMessage(PrivateSubscription.CHANNEL_PREFIX, apiKey);
             privateSubscriptions.clear();
         });
+    }
+
+    private void sendPing() {
+        JSONObject json = new JSONObject();
+        json.put("ping", System.currentTimeMillis()/1000);
+        sendMessage(json.toJSONString());
     }
 
     private void sendPong(long id) {
@@ -172,8 +180,14 @@ abstract class BiboxFuturesUSDTClientBase {
 
     void sendUnsubscribeMessage(String channel) {
         JSONObject json = new JSONObject();
-        json.put("channel", channel);
-        json.put("event", "removeChannel");
+        json.put("unsub", channel);
+        sendMessage(json.toJSONString());
+    }
+
+    void sendUnsubscribeMessage(String channel,String apiKey) {
+        JSONObject json = new JSONObject();
+        json.put("unsub", channel);
+        json.put("apikey", apiKey);
         sendMessage(json.toJSONString());
     }
 
@@ -232,7 +246,11 @@ abstract class BiboxFuturesUSDTClientBase {
                         }
 
                         @Override
-                        public void onMessage(HttpUtils.WebSocket socket, String text) {
+                        public void onMessage(HttpUtils.WebSocket socket, byte[] bytes) {
+                            String text = UncompressUtils.decodeBytes(bytes);
+                            if (text == null) {
+                                return;
+                            }
                             messageHandler.post(() -> onWebSocketMessage(text));
                         }
 
@@ -263,34 +281,26 @@ abstract class BiboxFuturesUSDTClientBase {
 
         if (!isArrMsg(text)) {
             // Ping
-            long pingId = JSONUtils.parsePing(JSON.parseObject(text));
+            JSONObject json = JSON.parseObject(text);
+            long pingId = JSONUtils.parsePing(json);
             if (pingId >= 0) {
                 log.info("ping [{}]", pingId);
                 sendPong(pingId);
                 return;
             }
-            log.warn(text);
-            return;
-        }
-
-        // sub msg
-        JSONArray a = JSON.parseArray(text);
-        for (int i = 0; i < a.size(); i++) {
-            JSONObject json = a.getJSONObject(i);
-
-            String channel = json.getString("channel");
+            // sub msg
+            String channel = json.getString("topic");
             if (StringUtils.isEmpty(channel)) {
-                continue;
+                return;
             }
-
             if (PrivateSubscription.CHANNEL_PREFIX.equals(channel)) {
-                JSONObject data = json.getJSONObject("data");
+                JSONObject data = json.getJSONObject("d");
                 for (PrivateSubscription sub : privateSubscriptions.values()) {
                     if (data.containsKey(sub.getDataName())) {
                         sub.onMessage(data);
                     }
                 }
-                continue;
+                return;
             }
 
             Subscription sub = subscriptions.get(channel);
@@ -322,8 +332,12 @@ abstract class BiboxFuturesUSDTClientBase {
         // 为稍后重连创建计划任务
         messageHandler.postDelayed(mScheduledReconnect = () -> {
             mScheduledReconnect = null;
-            reconnectWebSocket();
-        }, 60_000);
+            try {
+                sendPing();
+            }catch (Exception e) {
+                reconnectWebSocket();
+            }
+        }, 30_000);
     }
 
     private void reconnectWebSocket() {
@@ -335,12 +349,10 @@ abstract class BiboxFuturesUSDTClientBase {
     }
 
     protected String buildSignature() {
-        JSONObject json = new JSONObject();
-        json.put("apikey", apiKey);
-        json.put("channel", PrivateSubscription.CHANNEL_PREFIX);
-        json.put("event", "addChannel");
+        String oriStr = String.format("{\"apikey\":\"%s\",\"sub\":\"%s\"}",
+                apiKey, PrivateSubscription.CHANNEL_PREFIX);
         return Hex.encodeHexString(MacUtils.buildMAC(
-                json.toJSONString(), "HmacMD5", this.secretKey)).toLowerCase();
+                oriStr, "HmacMD5", this.secretKey)).toLowerCase();
     }
 
     private boolean isArrMsg(String text) {
