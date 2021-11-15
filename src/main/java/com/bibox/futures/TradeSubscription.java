@@ -55,7 +55,7 @@ class TradeSubscription extends Subscription<List<Trade>> {
         if (!isAdd) {
             JSONObject data = json.getJSONObject("d");
             JSONArray jsonArray = data.getJSONArray("d");
-            JSONArray last = jsonArray.getJSONArray(1);
+            JSONArray last = jsonArray.getJSONArray(0);
             return JSONUtils.parseTradeEventNew(last,data.getString("pair"));
         }
         return JSONUtils.parseTradeEventNew(json.getJSONArray("d"));
