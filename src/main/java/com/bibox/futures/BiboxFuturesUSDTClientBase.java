@@ -342,7 +342,12 @@ abstract class BiboxFuturesUSDTClientBase {
 
     private void reconnectWebSocket() {
         if (webSocket != null) {
-            webSocket.close();
+            try {
+                webSocket.close();
+            }catch (Exception e){
+                // 关闭失败
+                log.warn(e.getMessage());
+            }
             webSocket = null;
             connectWebSocket();
         }
